@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package Protos;
+
+message GlobalMessageRequest
+{
+    string message = 1;
+}
+
+message DirectMessageRequest
+{
+    string message = 1;
+    string targetUser = 2;
+}
+
+message ChangeNameRequest
+{
+    string newName = 1;
+}
+
+message Request {
+    oneof request
+    {
+        GlobalMessageRequest globalMessage = 2;
+        DirectMessageRequest directMessage = 3;
+    }
+}

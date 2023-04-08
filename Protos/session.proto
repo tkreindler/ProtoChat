@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "request.proto";
+import "response.proto";
+
+package Protos;
+
+service ChatAppQuic
+{
+    rpc SessionExecute (stream Request) returns (stream Response) {}
+}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package Protos;
+
+message Message
+{
+    string val = 1;
+}
+
+message Response {
+    oneof response
+    {
+        Message message = 1;
+    }
+}
