@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Service
 {
-    internal class ClientServicer : IAsyncDisposable
+    internal class ClientServicer : IClientServicer
     {
         private readonly Guid userIdentifier;
         private readonly IAsyncStreamReader<Request> messageStream;
@@ -26,7 +26,6 @@ namespace Service
         /// <param name="clientList">The client list to send messages to other clients with</param>
         public ClientServicer(
             Guid userIdentifier,
-            ChannelReader<Response> channel,
             IAsyncStreamReader<Request> messageStream,
             IClientList clientList)
         {
@@ -35,17 +34,11 @@ namespace Service
             this.clientList = clientList;
         }
 
-        private CancellationTokenSource? backgroundTaskToken = null;
-        private Task? backgroundTask = null;
-
-        /// <summary>
-        /// Kicks off listening asynchronously on background threads
-        /// </summary>
+        /// <inheritdoc/>
         public void Start()
         {
-            CancellationTokenSource source = new CancellationTokenSource();
-            this.backgroundTaskToken = source;
-            this.backgroundTask = this.HandleClientSocket(source.Token);
+            // kick it off in the background, don't await
+            _ = this.HandleClientSocket();
         }
 
         /// <summary>
@@ -53,9 +46,9 @@ namespace Service
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        private async Task HandleClientSocket(CancellationToken cancellationToken)
+        private async Task HandleClientSocket()
         {
-            await foreach (Protos.Request message in this.messageStream.ReadAllAsync(cancellationToken))
+            await foreach (Protos.Request message in this.messageStream.ReadAllAsync())
             {
                 switch (message.RequestCase)
                 {
@@ -81,13 +74,13 @@ namespace Service
         {
             Response responseMessage = new Response
             {
-                Message = new Message
+                Message = new MessageResponse
                 {
-                    Val = request.Message,
+                    Message = request.Message,
                 },
             };
 
-            IReadOnlyCollection<IAsyncStreamWriter<Response>> writers = await this.clientList.GetGlobalMessageList();
+            IReadOnlyCollection<IAsyncStreamWriter<Response>> writers = await this.clientList.GetGlobalMessageList(this.userIdentifier);
 
             await SendAllMessages(writers, responseMessage);
         }
@@ -96,13 +89,13 @@ namespace Service
         {
             Response responseMessage = new Response
             {
-                Message = new Message
+                Message = new MessageResponse
                 {
-                    Val = request.Message,
+                    Message = request.Message,
                 },
             };
 
-            IReadOnlyCollection<IAsyncStreamWriter<Response>> writers = await this.clientList.GetDirectMessageList(request.TargetUser);
+            IReadOnlyCollection<IAsyncStreamWriter<Response>> writers = await this.clientList.GetDirectMessageList(request.TargetUser, this.userIdentifier);
 
             await SendAllMessages(writers, responseMessage);
         }
@@ -114,32 +107,6 @@ namespace Service
             foreach (IAsyncStreamWriter<Response> writer in writers)
             {
                 await writer.WriteAsync(message);
-            }
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            if (this.backgroundTaskToken != null)
-            {
-                // cancel the background task
-                this.backgroundTaskToken.Cancel();
-                try
-                {
-                    if (this.backgroundTask is null)
-                    {
-                        throw new NotImplementedException("Background task should never be null if token is non-null");
-                    }
-
-#pragma warning disable VSTHRD003 // shouldn't matter as ConfigureAwait is false everywhere
-
-                    // wait for it to clean up smoothly so we absorb all potential exceptions
-                    await this.backgroundTask;
-#pragma warning restore VSTHRD003
-                }
-                catch (OperationCanceledException)
-                {
-                    // eat the cancellation exception
-                }
             }
         }
     }

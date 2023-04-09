@@ -2,14 +2,14 @@ syntax = "proto3";
 
 package Protos;
 
-message Message
+message MessageResponse
 {
-    string val = 1;
+    string message = 1;
 }
 
 message Response {
     oneof response
     {
-        Message message = 1;
+        MessageResponse message = 1;
     }
 }

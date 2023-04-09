@@ -10,7 +10,6 @@ namespace Service
 {
     internal class ChatAppQuicService : Protos.ChatAppQuic.ChatAppQuicBase
     {
-
         private readonly IClientList clientList;
 
         public ChatAppQuicService(IClientList clientList)
@@ -20,20 +19,24 @@ namespace Service
             this.clientList = clientList;
         }
 
-        public override Task SessionExecute(
+        /// <summary>
+        /// Main entrypoint of the service. Called when a new client establishes a new bidirectional session
+        /// </summary>
+        /// <param name="requestStream">Incoming stream with async messages from the client</param>
+        /// <param name="responseStream">Outgoing stream to send messages to the client</param>
+        /// <returns></returns>
+        public override async Task SessionExecute(
             IAsyncStreamReader<Request> requestStream,
             IServerStreamWriter<Response> responseStream,
-            ServerCallContext context)
+            ServerCallContext _)
         {
-            return base.SessionExecute(requestStream, responseStream, context);
-        }
+            // assign a new user for this session
+            Guid userIdentifier = Guid.NewGuid();
 
-        public override async Task (IAsyncStreamReader<Protos.Request> requestStream, IServerStreamWriter<Protos.Response> responseStream, ServerCallContext context)
-        {
-            await foreach (var requestMessage in requestStream.ReadAllAsync())
-            {
-                await _chatHub.HandleIncomingMessage(requestMessage, responseStream);
-            }
+            // create a new object to handle
+            IClientServicer clientServicer = new ClientServicer(userIdentifier, requestStream, this.clientList);
+
+            await this.clientList.Register(userIdentifier, clientServicer, responseStream);
         }
     }
 }

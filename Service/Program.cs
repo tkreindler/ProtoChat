@@ -4,10 +4,16 @@ namespace Service
     {
         public static void Main(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);
-            var app = builder.Build();
+            WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-            app.MapGet("/", () => "Hello World!");
+            builder.Services.AddGrpc();
+            builder.Services.AddSingleton<IClientList>(new ClientList());
+
+            WebApplication app = builder.Build();
+
+            app.MapGrpcService<ChatAppQuicService>();
+
+            app.MapGet("/", () => "Are you trying to reach ChatAppQuic? You must use our gRPC client.");
 
             app.Run();
         }

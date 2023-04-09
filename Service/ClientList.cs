@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Channels;
-using System.Threading.Tasks;
+﻿using Grpc.Core;
+using Protos;
 
 namespace Service
 {
@@ -11,70 +7,52 @@ namespace Service
     {
         #region State
 
-        private Dictionary<Guid, (IDisposable clientServicer, ChannelWriter<Protos.Response> channel)> channelDict = new ();
+        private Dictionary<Guid, IAsyncStreamWriter<Response>> channelDict = new ();
 
         private Dictionary<string, List<Guid>> guidLookupDict = new ();
 
         private Dictionary<Guid, string> nameLookupDict = new ();
 
-        private readonly ReaderWriterLockSlim mainLock = new ReaderWriterLockSlim();
-
-        private readonly List<IDisposable> disposalQueue = new List<IDisposable>();
+        private readonly Microsoft.VisualStudio.Threading.AsyncReaderWriterLock mainLock = new (joinableTaskContext: null);
 
         #endregion
 
         /// <inheritdoc/>
-        public void Register(Guid userIdentifier, IDisposable clientServicer, ChannelWriter<Protos.Response> channel)
+        public async Task Register(Guid userIdentifier, IClientServicer clientServicer, IAsyncStreamWriter<Response> writer)
         {
-            this.mainLock.EnterWriteLock();
-            try
+            await using (await this.mainLock.WriteLockAsync())
             {
-                if (!this.channelDict.TryAdd(userIdentifier, (clientServicer, channel)))
+                if (!this.channelDict.TryAdd(userIdentifier, writer))
                 {
                     throw new NotImplementedException($"User Identifier {userIdentifier} already exists.");
                 }
-            }
-            finally
-            {
-                this.mainLock.ExitWriteLock();
+
+                // while still in the write lock kick off the background thread for this
+                // this guarrantees we avoid any potential race conditions
+                clientServicer.Start();
             }
         }
 
         /// <inheritdoc/>
-        public void Unregister(Guid userIdentifier)
+        public async Task Unregister(Guid userIdentifier)
         {
-            this.mainLock.EnterWriteLock();
-            try
+            await using (await this.mainLock.WriteLockAsync())
             {
                 // remove name references
                 this.RemoveName(userIdentifier);
 
-                if (!this.channelDict.TryGetValue(userIdentifier, out var tup))
-                {
-                    throw new NotImplementedException($"User Identifier {userIdentifier} was not already registered");
-                }
-
-                // complete the channel and add the client servicer to the disposal queue for later disposal
-                this.disposalQueue.Add(tup.clientServicer);
-                tup.channel.Complete();
-
                 // remove the channel from the dictionary
                 if (!this.channelDict.Remove(userIdentifier))
                 {
-                    throw new NotImplementedException("Should be impossible, are you sure the write lock is held?");
+                    throw new NotImplementedException($"User Identifier {userIdentifier} was not already registered");
                 }
-            }
-            finally
-            {
-                this.mainLock.ExitWriteLock();
             }
         }
 
         /// <inheritdoc/>
-        public void ChangeName(Guid userIdentifier, string name)
+        public async Task ChangeName(Guid userIdentifier, string name)
         {
-            this.mainLock.EnterWriteLock();
-            try
+            await using (await this.mainLock.WriteLockAsync())
             {
                 // remove old name if it exists
                 this.RemoveName(userIdentifier);
@@ -98,59 +76,41 @@ namespace Service
 
                 nameList.Add(userIdentifier);
             }
-            finally
+        }
+
+        public async Task<IReadOnlyCollection<IAsyncStreamWriter<Response>>> GetGlobalMessageList(Guid selfIdentifier)
+        {
+            await using (await this.mainLock.ReadLockAsync())
             {
-                this.mainLock.ExitWriteLock();
+                // needs to copy the list to avoid concurrency issue
+                return this.channelDict
+                    .Where(x => x.Key != selfIdentifier)
+                    .Select(x => x.Value)
+                    .ToArray();
             }
         }
 
-        /// <inheritdoc/>
-        public void SendGlobalMessage(Protos.Response message)
+        public async Task<IReadOnlyCollection<IAsyncStreamWriter<Response>>> GetDirectMessageList(string name, Guid selfIdentifier)
         {
-            this.mainLock.EnterReadLock();
-            try
-            {
-                foreach (ChannelWriter<Protos.Response> channel in this.channelDict.Values.Select(x => x.channel))
-                {
-                    if (!channel.TryWrite(message))
-                    {
-                        throw new NotImplementedException("Channel is full, should never happen for unbounded channel");
-                    }
-                }
-            }
-            finally
-            {
-                this.mainLock.ExitReadLock();
-            }
-        }
-
-        /// <inheritdoc/>
-        public void SendDirectMessage(Protos.Response message, string name)
-        {
-            this.mainLock.EnterReadLock();
-            try
+            await using (await this.mainLock.ReadLockAsync())
             {
                 if (!this.guidLookupDict.TryGetValue(name, out List<Guid>? list) || !list.Any())
                 {
                     throw new NotImplementedException("No users with that name registered. TODO figure out what to do in that case.");
                 }
 
-                foreach (Guid guid in list)
-                {
-                    if (!this.channelDict.TryGetValue(guid, out var tuple))
+                // have to copy it into a new array to avoid concurrency issues
+                return list
+                    .Where(x => x != selfIdentifier)
+                    .Select(guid =>
                     {
-                        throw new NotImplementedException("Should never happen. All guids in the guidLookupDict should have a channel");
-                    }
+                        if (!this.channelDict.TryGetValue(guid, out var writier))
+                        {
+                            throw new NotImplementedException("Should never happen. All guids in the guidLookupDict should have a channel");
+                        }
 
-                    if (!tuple.channel.TryWrite(message))
-                    {
-                        throw new NotImplementedException("Channel is full, should never happen for unbounded channel");
-                    }
-                }
-            }
-            finally
-            {
-                this.mainLock.ExitReadLock();
+                        return writier;
+                    }).ToArray();
             }
         }
 
@@ -181,46 +141,5 @@ namespace Service
                 }
             }
         }
-
-        #region IDisposable
-
-        /// <summary>
-        /// Implements disposability pattern
-        /// </summary>
-        /// <param name="disposing">True if disposing, false if finalizing</param>
-        public virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                // Dispose of managed disposable 
-                this.mainLock.Dispose();
-
-                foreach ((IDisposable servicer, var channel) in this.channelDict.Values)
-                {
-                    channel.Complete();
-                    servicer.Dispose();
-                }
-
-                foreach (IDisposable servicer in this.disposalQueue)
-                {
-                    servicer.Dispose();
-                }
-            }
-
-            // Set large objects to null to enable GC
-            this.channelDict = null!;
-            this.nameLookupDict = null!;
-            this.guidLookupDict = null!;
-        }
-
-        /// <inheritdoc/>
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        #endregion
     }
 }

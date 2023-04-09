@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Grpc.Net.Client" Version="*" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Protos\Protos.csproj" />
   </ItemGroup>
 
