@@ -17,8 +17,20 @@ namespace Client
 
             Uri address = new Uri(args[0]);
 
+            // keep alive the connection, don't immediately close
+            GrpcChannelOptions channelOptions = new GrpcChannelOptions
+            {
+                HttpHandler = new SocketsHttpHandler
+                {
+                    PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan,
+                    KeepAlivePingDelay = TimeSpan.FromSeconds(60),
+                    KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+                    EnableMultipleHttp2Connections = true
+                }
+            };
+
             // establish bidirectional channel and wrap it in the grpc client
-            using GrpcChannel channel = GrpcChannel.ForAddress(address);
+            using GrpcChannel channel = GrpcChannel.ForAddress(address, channelOptions);
             ChatAppQuicClient client = new ChatAppQuicClient(channel);
 
             using AsyncDuplexStreamingCall<Request, Response> session = client.SessionExecute();
@@ -26,9 +38,11 @@ namespace Client
             IResponseHandler responseHandler = new ResponseHandler(session.ResponseStream, Console.WriteLine);
 
             // start in the background
-            _ = responseHandler.Start();
+            Task background = responseHandler.Start();
 
             IRequestHandler requestHandler = new RequestHandler(session.RequestStream);
+
+            await requestHandler.HandleInput("test");
 
             // read console in the foreground, having the request handler handle the output
             while (true)
@@ -37,11 +51,16 @@ namespace Client
 
                 if (line is null)
                 {
-                    return 0;
+                    break;
                 }
 
                 await requestHandler.HandleInput(line);
             }
+
+            // await background now that we're done
+            await background;
+
+            return 0;
         }
     }
 }
