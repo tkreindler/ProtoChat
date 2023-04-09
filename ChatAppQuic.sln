@@ -5,7 +5,7 @@ VisualStudioVersion = 17.5.33516.290
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Client", "Client\Client.csproj", "{3D4B3F19-9FB4-4FA5-B0F9-17DB7EB074C2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Protos", "Protos\Protos.csproj", "{DC7957B7-57EE-4503-8636-4F390D86384F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Protos", "ProtoLibrary\Protos.csproj", "{DC7957B7-57EE-4503-8636-4F390D86384F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "Service\Service.csproj", "{200CEC1B-7C7E-411F-8936-56386451D58D}"
 EndProject

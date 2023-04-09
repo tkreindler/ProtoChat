@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Protobuf Include="*.proto" Access="internal" />
+    <Protobuf Include="..\protos\*.proto" Access="internal" />
     <Content Include="@(Protobuf)" LinkBase="" />
   </ItemGroup>
 

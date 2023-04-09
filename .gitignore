@@ -2,3 +2,5 @@
 obj/
 objd/
 bin/
+out/
+target/

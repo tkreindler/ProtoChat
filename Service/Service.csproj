@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Protos\Protos.csproj" />
+    <ProjectReference Include="..\ProtoLibrary\Protos.csproj" />
   </ItemGroup>
 
 </Project>
