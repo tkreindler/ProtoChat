@@ -1,5 +1,6 @@
 ﻿using Google.Protobuf;
 using Grpc.Core;
+using Microsoft.AspNetCore.Connections;
 using Protos;
 using System;
 using System.Collections.Generic;
@@ -48,26 +49,42 @@ namespace Service
         private async Task HandleClientSocket()
         {
             IAsyncEnumerable<Request> enumerable = this.messageStream.ReadAllAsync();
-            await foreach (Request message in enumerable)
+            try
             {
-                switch (message.RequestCase)
+                await foreach (Request message in enumerable)
                 {
-                    case Request.RequestOneofCase.DirectMessage:
-                        await this.HandleDirectMessage(message.DirectMessage);
-                        break;
+                    switch (message.RequestCase)
+                    {
+                        case Request.RequestOneofCase.DirectMessage:
+                            await this.HandleDirectMessage(message.DirectMessage);
+                            break;
 
-                    case Request.RequestOneofCase.GlobalMessage:
-                        await this.HandleGlobalMessage(message.GlobalMessage);
-                        break;
+                        case Request.RequestOneofCase.GlobalMessage:
+                            await this.HandleGlobalMessage(message.GlobalMessage);
+                            break;
 
-                    default:
-                        Debug.WriteLine($"Received bad request of type {message.RequestCase}", category: "Error");
-                        break;
+                        default:
+                            Debug.WriteLine($"Received bad request of type {message.RequestCase}", category: "Error");
+                            break;
+                    }
                 }
             }
-
-            // only gets here when connection to client has been closed
-            await this.clientList.Unregister(this.userIdentifier);
+            catch (IOException e)
+            {
+                if (e.InnerException is ConnectionAbortedException)
+                {
+                    // swallow these silently, just means the client disconnected
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            finally
+            {
+                // close up the connection
+                await this.clientList.Unregister(this.userIdentifier);
+            }
         }
 
         private async Task HandleGlobalMessage(Protos.GlobalMessageRequest request)

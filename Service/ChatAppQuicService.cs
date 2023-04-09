@@ -33,20 +33,6 @@ namespace Service
             // assign a new user for this session
             Guid userIdentifier = Guid.NewGuid();
 
-            Response response = new Response
-            {
-                Message = new MessageResponse
-                {
-                    Message = "Someone joined the chat",
-                },
-            };
-
-            IReadOnlyCollection<IServerStreamWriter<Response>> list = await this.clientList.GetGlobalMessageList(userIdentifier);
-            foreach (var item in list)
-            {
-                await item.WriteAsync(response);
-            }
-
             // create a new object to handle
             IClientServicer clientServicer = new ClientServicer(userIdentifier, requestStream, this.clientList);
 
