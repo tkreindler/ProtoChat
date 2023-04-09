@@ -35,10 +35,9 @@ namespace Service
         }
 
         /// <inheritdoc/>
-        public void Start()
+        public async Task Start()
         {
-            // kick it off in the background, don't await
-            _ = this.HandleClientSocket();
+            await this.HandleClientSocket();
         }
 
         /// <summary>
@@ -48,7 +47,8 @@ namespace Service
         /// <returns></returns>
         private async Task HandleClientSocket()
         {
-            await foreach (Protos.Request message in this.messageStream.ReadAllAsync())
+            IAsyncEnumerable<Request> enumerable = this.messageStream.ReadAllAsync();
+            await foreach (Request message in enumerable)
             {
                 switch (message.RequestCase)
                 {

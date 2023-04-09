@@ -26,10 +26,6 @@ namespace Service
                 {
                     throw new NotImplementedException($"User Identifier {userIdentifier} already exists.");
                 }
-
-                // while still in the write lock kick off the background thread for this
-                // this guarrantees we avoid any potential race conditions
-                clientServicer.Start();
             }
         }
 

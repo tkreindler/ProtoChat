@@ -15,7 +15,7 @@ namespace Client
                 return 1;
             }
 
-            Uri address = new Uri(args[0]);
+            string address = args[0];
 
             // keep alive the connection, don't immediately close
             GrpcChannelOptions channelOptions = new GrpcChannelOptions
@@ -49,13 +49,15 @@ namespace Client
             {
                 string? line = Console.ReadLine();
 
-                if (line is null)
+                if (line is null || channel.State != ConnectivityState.Ready)
                 {
                     break;
                 }
 
                 await requestHandler.HandleInput(line);
             }
+
+            await channel.ShutdownAsync();
 
             // await background now that we're done
             await background;

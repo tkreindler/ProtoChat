@@ -3,8 +3,8 @@
     public interface IClientServicer
     {
         /// <summary>
-        /// Kicks off listening asynchronously on a background thread
+        /// Kicks off listening
         /// </summary>
-        void Start();
+        Task Start();
     }
 }
