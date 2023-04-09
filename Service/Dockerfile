@@ -6,16 +6,11 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
-COPY ["Service.csproj", "Service/"]
-RUN dotnet restore "Service.csproj"
 COPY . .
-WORKDIR "/src/Service"
-RUN dotnet build "Service.csproj" -c Release -o /app/build
+# WORKDIR "/src/Service"
+# RUN dotnet publish "Service.csproj" -c Release -o /app/build
 
-FROM build AS publish
-RUN dotnet publish "Service.csproj" -c Release -o /app/publish /p:UseAppHost=false
-
-FROM base AS final
-WORKDIR /app
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Service.dll"]
+# FROM base AS final
+# WORKDIR /app
+# COPY --from=build /app/publish .
+# ENTRYPOINT ["dotnet", "Service.dll"]
