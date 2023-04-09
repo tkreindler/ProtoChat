@@ -20,7 +20,7 @@ namespace Service
         /// <param name="userIdentifier">Guid user identifier</param>
         /// <param name="clientServicer">Client servicer being added</param>
         /// <param name="writer">The proto stream to communicate with this client with</param>
-        Task Register(Guid userIdentifier, IClientServicer clientServicer, IAsyncStreamWriter<Response> writer);
+        Task Register(Guid userIdentifier, IClientServicer clientServicer, IServerStreamWriter<Response> writer);
 
         /// <summary>
         /// Unregisters a user (log out)
@@ -39,13 +39,13 @@ namespace Service
         /// Get a list of all stream writers to send the global message to
         /// </summary>
         /// <param name="selfIdentifier">The one sending the message, needed so it's excluded from the list</param>
-        Task<IReadOnlyCollection<IAsyncStreamWriter<Response>>> GetGlobalMessageList(Guid selfIdentifier);
+        Task<IReadOnlyCollection<IServerStreamWriter<Response>>> GetGlobalMessageList(Guid selfIdentifier);
 
         /// <summary>
         /// Get a list of stream writers to send the message to for this name
         /// </summary>
         /// <param name="name">Name to send the message to</param>
         /// <param name="selfIdentifier">The one sending the message, needed so it's excluded from the list</param>
-        Task<IReadOnlyCollection<IAsyncStreamWriter<Response>>> GetDirectMessageList(string name, Guid selfIdentifier);
+        Task<IReadOnlyCollection<IServerStreamWriter<Response>>> GetDirectMessageList(string name, Guid selfIdentifier);
     }
 }

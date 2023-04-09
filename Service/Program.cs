@@ -11,6 +11,8 @@ namespace Service
 
             WebApplication app = builder.Build();
 
+            app.UseRouting();
+
             app.MapGrpcService<ChatAppQuicService>();
 
             app.MapGet("/", () => "Are you trying to reach ChatAppQuic? You must use our gRPC client.");

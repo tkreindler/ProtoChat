@@ -80,7 +80,7 @@ namespace Service
                 },
             };
 
-            IReadOnlyCollection<IAsyncStreamWriter<Response>> writers = await this.clientList.GetGlobalMessageList(this.userIdentifier);
+            IReadOnlyCollection<IServerStreamWriter<Response>> writers = await this.clientList.GetGlobalMessageList(this.userIdentifier);
 
             await SendAllMessages(writers, responseMessage);
         }
@@ -95,16 +95,16 @@ namespace Service
                 },
             };
 
-            IReadOnlyCollection<IAsyncStreamWriter<Response>> writers = await this.clientList.GetDirectMessageList(request.TargetUser, this.userIdentifier);
+            IReadOnlyCollection<IServerStreamWriter<Response>> writers = await this.clientList.GetDirectMessageList(request.TargetUser, this.userIdentifier);
 
             await SendAllMessages(writers, responseMessage);
         }
 
         private static async Task SendAllMessages(
-            IReadOnlyCollection<IAsyncStreamWriter<Response>> writers,
+            IReadOnlyCollection<IServerStreamWriter<Response>> writers,
             Response message)
         {
-            foreach (IAsyncStreamWriter<Response> writer in writers)
+            foreach (IServerStreamWriter<Response> writer in writers)
             {
                 await writer.WriteAsync(message);
             }

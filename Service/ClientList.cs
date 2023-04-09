@@ -7,7 +7,7 @@ namespace Service
     {
         #region State
 
-        private Dictionary<Guid, IAsyncStreamWriter<Response>> channelDict = new ();
+        private Dictionary<Guid, IServerStreamWriter<Response>> channelDict = new ();
 
         private Dictionary<string, List<Guid>> guidLookupDict = new ();
 
@@ -18,7 +18,7 @@ namespace Service
         #endregion
 
         /// <inheritdoc/>
-        public async Task Register(Guid userIdentifier, IClientServicer clientServicer, IAsyncStreamWriter<Response> writer)
+        public async Task Register(Guid userIdentifier, IClientServicer clientServicer, IServerStreamWriter<Response> writer)
         {
             await using (await this.mainLock.WriteLockAsync())
             {
@@ -78,7 +78,7 @@ namespace Service
             }
         }
 
-        public async Task<IReadOnlyCollection<IAsyncStreamWriter<Response>>> GetGlobalMessageList(Guid selfIdentifier)
+        public async Task<IReadOnlyCollection<IServerStreamWriter<Response>>> GetGlobalMessageList(Guid selfIdentifier)
         {
             await using (await this.mainLock.ReadLockAsync())
             {
@@ -90,7 +90,7 @@ namespace Service
             }
         }
 
-        public async Task<IReadOnlyCollection<IAsyncStreamWriter<Response>>> GetDirectMessageList(string name, Guid selfIdentifier)
+        public async Task<IReadOnlyCollection<IServerStreamWriter<Response>>> GetDirectMessageList(string name, Guid selfIdentifier)
         {
             await using (await this.mainLock.ReadLockAsync())
             {
