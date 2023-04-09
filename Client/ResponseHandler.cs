@@ -29,7 +29,8 @@ namespace Client
 
         private void HandleMessage(Protos.MessageResponse response)
         {
-            this.printAction(response.Message);
+            string sender = response.Sender.ToObject() ?? "Unknown";
+            this.printAction($"{sender}: {response.Message}");
         }
 
         private async Task ReadAllResponses()

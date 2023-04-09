@@ -9,7 +9,7 @@ namespace Service
 
         private Dictionary<Guid, IServerStreamWriter<Response>> channelDict = new ();
 
-        private Dictionary<string, List<Guid>> guidLookupDict = new ();
+        private Dictionary<string, List<Guid>> guidLookupDict = new (StringComparer.InvariantCultureIgnoreCase);
 
         private Dictionary<Guid, string> nameLookupDict = new ();
 
@@ -68,6 +68,10 @@ namespace Service
                 {
                     // otherwise add a new nameList, usually will only need to hold one item
                     nameList = new List<Guid>(capacity: 1);
+                    if (!this.guidLookupDict.TryAdd(name, nameList))
+                    {
+                        throw new NotImplementedException("Should be impossible, is there a race condition?");
+                    }
                 }
 
                 nameList.Add(userIdentifier);
@@ -92,7 +96,8 @@ namespace Service
             {
                 if (!this.guidLookupDict.TryGetValue(name, out List<Guid>? list) || !list.Any())
                 {
-                    throw new NotImplementedException("No users with that name registered. TODO figure out what to do in that case.");
+                    // nobody to DM to, just return none
+                    return Array.Empty<IServerStreamWriter<Response>>();
                 }
 
                 // have to copy it into a new array to avoid concurrency issues

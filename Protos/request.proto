@@ -21,6 +21,7 @@ message ChangeNameRequest
 message Request {
     oneof request
     {
+        ChangeNameRequest changeName = 1;
         GlobalMessageRequest globalMessage = 2;
         DirectMessageRequest directMessage = 3;
     }

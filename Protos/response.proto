@@ -1,10 +1,13 @@
 syntax = "proto3";
 
+import "dataTypes.proto";
+
 package Protos;
 
 message MessageResponse
 {
     string message = 1;
+    NullableString sender = 2;
 }
 
 message Response {

@@ -43,6 +43,41 @@ namespace Client
                 // start in the background
                 Task background = responseHandler.Start();
 
+                string? userName = null;
+                while (userName is null)
+                {
+                    Console.Write("Enter username: ");
+
+                    string? input = Console.ReadLine();
+
+                    // they entered no username, let it be
+                    if (string.IsNullOrEmpty(input))
+                    {
+                        break;
+                    }
+
+                    if (input.Contains(' '))
+                    {
+                        Debug.WriteLine("Spaces aren't allowed in usernames", category: "Error");
+                        continue;
+                    }
+
+                    userName = input;
+                }
+
+                if (userName is not null)
+                {
+                    await session.RequestStream.WriteAsync(new Request
+                    {
+                        ChangeName = new ChangeNameRequest
+                        {
+                            NewName = userName,
+                        },
+                    });
+
+                    Console.WriteLine($"Successfully logged in as '{userName}'");
+                }
+
                 IRequestHandler requestHandler = new RequestHandler(session.RequestStream);
 
                 // read console in the foreground, having the request handler handle the output
@@ -55,7 +90,15 @@ namespace Client
                         break;
                     }
 
-                    await requestHandler.HandleInput(line);
+                    try
+                    {
+                        await requestHandler.HandleInput(line);
+                    }
+                    catch (Exception e)
+                    {
+                        // log exception and eat it
+                        Debug.WriteLine(e.ToString(), category: "Error");
+                    }
                 }
 
                 // await background now that we're done

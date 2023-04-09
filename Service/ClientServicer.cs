@@ -19,6 +19,8 @@ namespace Service
         private readonly IAsyncStreamReader<Request> messageStream;
         private readonly IClientList clientList;
 
+        private string? name = null;
+
         /// <summary>
         /// Main constructor for client servicer, doesn't start listening yet
         /// </summary>
@@ -63,6 +65,10 @@ namespace Service
                             await this.HandleGlobalMessage(message.GlobalMessage);
                             break;
 
+                        case Request.RequestOneofCase.ChangeName:
+                            await this.HandleChangeName(message.ChangeName);
+                            break;
+
                         default:
                             Debug.WriteLine($"Received bad request of type {message.RequestCase}", category: "Error");
                             break;
@@ -87,6 +93,13 @@ namespace Service
             }
         }
 
+        private async Task HandleChangeName(Protos.ChangeNameRequest request)
+        {
+            this.name = request.NewName;
+
+            await this.clientList.ChangeName(this.userIdentifier, this.name);
+        }
+
         private async Task HandleGlobalMessage(Protos.GlobalMessageRequest request)
         {
             Response responseMessage = new Response
@@ -94,6 +107,7 @@ namespace Service
                 Message = new MessageResponse
                 {
                     Message = request.Message,
+                    Sender = this.name.ToProto(),
                 },
             };
 
@@ -109,6 +123,7 @@ namespace Service
                 Message = new MessageResponse
                 {
                     Message = request.Message,
+                    Sender = this.name.ToProto(),
                 },
             };
 
